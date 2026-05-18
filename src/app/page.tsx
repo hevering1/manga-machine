@@ -15,10 +15,10 @@ import { Plus, Sparkles, BookOpen, Users, Globe, Zap, X } from "lucide-react";
 
 // ── Toast context ───────────────────────────────────────────────
 interface Toast { id: string; message: string; type: "success" | "error" | "info" }
+
 const ToastContext = createContext<{ addToast: (msg: string, type?: Toast["type"]) => void }>({
   addToast: () => {}
 });
-export const useToast = () => useContext(ToastContext);
 
 function ToastContainer({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: string) => void }) {
   return (
@@ -132,7 +132,7 @@ export default function Home() {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
-  // Keyboard shortcut: G = Story Engine
+  // Keyboard shortcuts: G = Story Engine, Escape = Dashboard
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -160,7 +160,6 @@ export default function Home() {
         <Sidebar active={active} setActive={setActive} />
 
         <main className="flex-1 overflow-y-auto relative">
-          {/* Background texture */}
           <div className="fixed inset-0 bg-manga-grid bg-[size:40px_40px] opacity-100 pointer-events-none" />
           <div className="fixed inset-0 bg-gradient-to-br from-ink-900 via-ink-900/95 to-ink-800/90 pointer-events-none" />
 
@@ -178,10 +177,7 @@ export default function Home() {
           </div>
         </main>
 
-        {/* Floating quick-add */}
         <FloatingButton onNavigate={setActive} />
-
-        {/* Toasts */}
         <ToastContainer toasts={toasts} dismiss={dismissToast} />
       </div>
     </ToastContext.Provider>
