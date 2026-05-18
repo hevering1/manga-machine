@@ -5,7 +5,7 @@ const APP_ID = "69eb83a3def5ae18fa5c7c1a";
 const API = `https://app.base44.com/api/apps/${APP_ID}/entities/ChapterScript`;
 const HEADERS = {
   "Content-Type": "application/json",
-  "Authorization": `Bearer ${process.env.BASE44_API_KEY}`,
+  "Authorization": `Bearer ${process.env.BASE44_SERVICE_TOKEN}`,
 };
 
 export async function GET() {
