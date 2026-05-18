@@ -9,7 +9,7 @@ export async function GET() {
   try {
     const res = await fetch(BASE44_API, {
       headers: {
-        "Authorization": `Bearer ${process.env.BASE44_API_KEY}`,
+        "Authorization": `Bearer ${process.env.BASE44_SERVICE_TOKEN}`,
         "Content-Type": "application/json",
       },
       cache: "no-store",
