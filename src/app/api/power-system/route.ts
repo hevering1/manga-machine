@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     let context = customContext;
     if (bibleId) {
       const res = await fetch(`${BIBLES_API}/${bibleId}`, {
-        headers: { "Authorization": `Bearer ${process.env.BASE44_API_KEY}`, "Content-Type": "application/json" },
+        headers: { "Authorization": `Bearer ${process.env.BASE44_SERVICE_TOKEN}`, "Content-Type": "application/json" },
       });
       if (res.ok) {
         const bible = await res.json();
