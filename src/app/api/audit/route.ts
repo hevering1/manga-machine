@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     if (mode === "select" && content) {
       const res = await fetch(`${BIBLES_API}/${content}`, {
         headers: {
-          "Authorization": `Bearer ${process.env.BASE44_API_KEY}`,
+          "Authorization": `Bearer ${process.env.BASE44_SERVICE_TOKEN}`,
           "Content-Type": "application/json",
         },
         cache: "no-store",
