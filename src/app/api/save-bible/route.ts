@@ -1,5 +1,4 @@
 // src/app/api/save-bible/route.ts
-// Saves a generated story bible to Base44 SeriesBible entity
 import { NextRequest, NextResponse } from "next/server";
 
 const APP_ID = "69eb83a3def5ae18fa5c7c1a";
@@ -7,33 +6,52 @@ const BASE44_API = `https://app.base44.com/api/apps/${APP_ID}/entities/SeriesBib
 
 export async function POST(req: NextRequest) {
   try {
-    const { story, config } = await req.json();
+    const body = await req.json();
+    // Accept both { bible } (from StoryEngine) and { story } (legacy)
+    const s = body.bible || body.story;
+    const config = body.config || {};
+
+    if (!s || !s.series_title) {
+      return NextResponse.json({ error: "No bible data provided" }, { status: 400 });
+    }
 
     const payload = {
-      series_title: story.series_title,
-      tagline: story.tagline,
-      elevator_pitch: story.elevator_pitch,
-      world_name: story.world_name,
-      world_building: story.world_building,
-      power_system_name: story.power_system_name,
-      power_system: story.power_system,
-      protagonist_name: story.protagonist_name,
-      protagonist_background: story.protagonist_background,
-      protagonist_archetype: story.protagonist_archetype,
-      antagonist_name: story.antagonist_name,
-      antagonist_motivation: story.antagonist_motivation,
-      antagonist_archetype: story.antagonist_archetype,
-      supporting_cast: JSON.stringify(story.supporting_cast),
-      core_themes: JSON.stringify(story.core_themes),
-      tone: story.tone,
-      virality_hooks: JSON.stringify(story.virality_hooks),
-      chapter_arc_structure: JSON.stringify(story.chapter_arc_structure),
-      first_10_chapters: JSON.stringify(story.first_10_chapters),
-      what_makes_it_original: story.what_makes_it_original,
-      target_audience: story.target_audience,
-      comparable_series: JSON.stringify(story.comparable_series),
+      series_title: s.series_title || "",
+      tagline: s.tagline || "",
+      elevator_pitch: s.elevator_pitch || "",
+      world_name: s.world_name || "",
+      world_building: s.world_building || "",
+      power_system_name: s.power_system_name || "",
+      power_system: s.power_system || "",
+      protagonist_name: s.protagonist_name || "",
+      protagonist_background: s.protagonist_background || "",
+      protagonist_archetype: s.protagonist_archetype || "",
+      antagonist_name: s.antagonist_name || "",
+      antagonist_motivation: s.antagonist_motivation || "",
+      antagonist_archetype: s.antagonist_archetype || "",
+      supporting_cast: typeof s.supporting_cast === "string"
+        ? s.supporting_cast
+        : JSON.stringify(s.supporting_cast || []),
+      core_themes: typeof s.core_themes === "string"
+        ? s.core_themes
+        : JSON.stringify(s.core_themes || []),
+      tone: s.tone || "",
+      virality_hooks: typeof s.virality_hooks === "string"
+        ? s.virality_hooks
+        : JSON.stringify(s.virality_hooks || []),
+      chapter_arc_structure: typeof s.chapter_arc_structure === "string"
+        ? s.chapter_arc_structure
+        : JSON.stringify(s.chapter_arc_structure || []),
+      first_10_chapters: typeof s.first_10_chapters === "string"
+        ? s.first_10_chapters
+        : JSON.stringify(s.first_10_chapters || []),
+      what_makes_it_original: s.what_makes_it_original || "",
+      target_audience: s.target_audience || "",
+      comparable_series: typeof s.comparable_series === "string"
+        ? s.comparable_series
+        : JSON.stringify(s.comparable_series || []),
       status: "Draft",
-      generation_config: JSON.stringify(config || {}),
+      generation_config: JSON.stringify(config),
     };
 
     const res = await fetch(BASE44_API, {
@@ -47,12 +65,14 @@ export async function POST(req: NextRequest) {
 
     if (!res.ok) {
       const err = await res.text();
+      console.error("Save failed:", err);
       return NextResponse.json({ error: "Save failed", details: err }, { status: 500 });
     }
 
     const saved = await res.json();
     return NextResponse.json({ success: true, id: saved.id });
   } catch (e: any) {
+    console.error("save-bible error:", e);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
