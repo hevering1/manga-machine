@@ -106,7 +106,7 @@ Return ONLY valid JSON.`;
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${process.env.BASE44_API_KEY}`,
+              "Authorization": `Bearer ${process.env.BASE44_SERVICE_TOKEN}`,
             },
             body: JSON.stringify({ url: tempUrl }),
           });
@@ -155,7 +155,7 @@ Return ONLY valid JSON.`;
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.BASE44_API_KEY}`,
+        "Authorization": `Bearer ${process.env.BASE44_SERVICE_TOKEN}`,
       },
       body: JSON.stringify(payload),
     });
