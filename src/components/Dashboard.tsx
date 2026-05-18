@@ -1,166 +1,251 @@
 "use client";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, Users, Zap, Layers, TrendingUp, Clock, ChevronRight, Flame } from "lucide-react";
+import {
+  BookOpen, Layers, Zap, FileText, TrendingUp, Clock,
+  ChevronRight, Flame, Sparkles, Plus, RefreshCw, Star,
+  CheckCircle, Edit3, Globe, Users
+} from "lucide-react";
 
-const stats = [
-  { label: "Series in Library", value: "0", icon: BookOpen, color: "#ffd700", change: "+0 this week" },
-  { label: "Active Series", value: "0", icon: Layers, color: "#00d4ff", change: "Start creating" },
-  { label: "Characters Built", value: "0", icon: Users, color: "#a855f7", change: "Add characters" },
-  { label: "Chapters Generated", value: "0", icon: Zap, color: "#ff4d6d", change: "Generate now" },
-];
+interface Stats {
+  libraryCount: number;
+  biblesCount: number;
+  chaptersCount: number;
+  completeCount: number;
+}
 
-const recentActivity = [
-  { action: "System initialized", detail: "Manga Machine ready for input", time: "Just now", color: "#10b981" },
-  { action: "Reference Library created", detail: "Ready to accept series via Gmail", time: "Today", color: "#ffd700" },
-  { action: "Story Engine online", detail: "AI generation pipeline active", time: "Today", color: "#ff4d6d" },
-];
+interface RecentItem {
+  id: string;
+  type: "bible" | "chapter" | "library";
+  title: string;
+  subtitle: string;
+  time: string;
+  status?: string;
+}
 
-const quickActions = [
-  { label: "Add Series via Email", desc: "Email with 'add: Series Name'", color: "#ffd700", icon: "📧" },
-  { label: "Start Story Engine", desc: "Generate a new original series", color: "#ff4d6d", icon: "⚡" },
-  { label: "Build Character Bible", desc: "Create a detailed character profile", color: "#a855f7", icon: "🧬" },
-  { label: "Design Power System", desc: "Build a new power system from scratch", color: "#f97316", icon: "🔥" },
-];
+function StatCard({ label, value, icon: Icon, color, change, onClick }: any) {
+  return (
+    <motion.div whileHover={{ y: -2, scale: 1.01 }} onClick={onClick}
+      className="bg-ink-800/60 border border-white/5 rounded-2xl p-5 cursor-pointer hover:border-white/15 transition-all group relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-5 -translate-y-8 translate-x-8"
+        style={{ backgroundColor: color }} />
+      <div className="flex items-start justify-between mb-3">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+          style={{ backgroundColor: `${color}18`, border: `1px solid ${color}30` }}>
+          <Icon size={16} style={{ color }} />
+        </div>
+        {change && (
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)" }}>
+            {change}
+          </span>
+        )}
+      </div>
+      <div className="font-display text-3xl tracking-wider mb-0.5" style={{ color }}>{value}</div>
+      <div className="text-ink-300 text-xs">{label}</div>
+    </motion.div>
+  );
+}
+
+function ActivityItem({ item }: { item: RecentItem }) {
+  const icons: Record<string, any> = { bible: Sparkles, chapter: FileText, library: BookOpen };
+  const colors: Record<string, string> = { bible: "#ff4d6d", chapter: "#00d4ff", library: "#ffd700" };
+  const Icon = icons[item.type];
+  const color = colors[item.type];
+
+  return (
+    <div className="flex items-start gap-3 py-3 border-b border-white/5 last:border-0">
+      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+        style={{ backgroundColor: `${color}15`, border: `1px solid ${color}25` }}>
+        <Icon size={12} style={{ color }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-white text-xs font-semibold truncate">{item.title}</p>
+        <p className="text-ink-400 text-[10px] mt-0.5">{item.subtitle}</p>
+      </div>
+      <div className="text-ink-500 text-[10px] flex-shrink-0">{item.time}</div>
+    </div>
+  );
+}
+
+function QuickAction({ icon: Icon, label, color, onClick }: any) {
+  return (
+    <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+      onClick={onClick}
+      className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-white/5 hover:border-white/15 bg-ink-800/40 transition-all group">
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-all"
+        style={{ backgroundColor: `${color}15`, border: `1px solid ${color}25` }}>
+        <Icon size={18} style={{ color }} className="group-hover:scale-110 transition-transform" />
+      </div>
+      <span className="text-[10px] font-semibold text-ink-300 text-center leading-tight">{label}</span>
+    </motion.button>
+  );
+}
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
 
 export default function Dashboard({ setActive }: { setActive: (s: string) => void }) {
+  const [stats, setStats] = useState<Stats>({ libraryCount: 0, biblesCount: 0, chaptersCount: 0, completeCount: 0 });
+  const [recent, setRecent] = useState<RecentItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [libRes, bibleRes, chapterRes] = await Promise.all([
+          fetch("/api/library"),
+          fetch("/api/bibles"),
+          fetch("/api/chapters"),
+        ]);
+        const [libData, bibleData, chapterData] = await Promise.all([
+          libRes.json(), bibleRes.json(), chapterRes.json()
+        ]);
+
+        const library = libData.series || [];
+        const bibles = bibleData.bibles || [];
+        const chapters = chapterData.chapters || [];
+
+        setStats({
+          libraryCount: library.length,
+          biblesCount: bibles.length,
+          chaptersCount: chapters.length,
+          completeCount: bibles.filter((b: any) => b.status === "Production").length,
+        });
+
+        // Build recent activity
+        const items: RecentItem[] = [
+          ...bibles.slice(0, 4).map((b: any) => ({
+            id: b.id, type: "bible" as const,
+            title: b.series_title || "Untitled Bible",
+            subtitle: `Story Bible · ${b.status || "Draft"}`,
+            time: timeAgo(b.created_date),
+            status: b.status,
+          })),
+          ...chapters.slice(0, 3).map((c: any) => ({
+            id: c.id, type: "chapter" as const,
+            title: c.chapter_title || `Chapter ${c.chapter_number}`,
+            subtitle: `${c.series_title || "Unknown Series"} · Ch.${c.chapter_number}`,
+            time: timeAgo(c.created_date),
+          })),
+          ...library.slice(0, 3).map((l: any) => ({
+            id: l.id, type: "library" as const,
+            title: l.title,
+            subtitle: `${l.type || "Manga"} · Added to library`,
+            time: timeAgo(l.created_date),
+          })),
+        ].sort((a, b) => 0).slice(0, 8);
+
+        setRecent(items);
+      } catch {}
+      finally { setLoading(false); }
+    };
+    fetchStats();
+  }, []);
+
+  const quickActions = [
+    { icon: Sparkles, label: "New Bible", color: "#ff4d6d", page: "engine" },
+    { icon: BookOpen, label: "Add Series", color: "#ffd700", page: "library" },
+    { icon: Users, label: "Characters", color: "#a855f7", page: "characters" },
+    { icon: Globe, label: "World Builder", color: "#00d4ff", page: "world" },
+    { icon: Zap, label: "Power System", color: "#10b981", page: "power" },
+    { icon: FileText, label: "Chapter Vault", color: "#f59e0b", page: "vault" },
+  ];
+
   return (
-    <div className="p-8 space-y-8">
-      {/* Hero */}
-      <div className="relative rounded-2xl overflow-hidden bg-ink-700 border border-white/5 p-8 speed-line-bg">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-crimson-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/2 w-64 h-64 bg-gold-500/5 rounded-full blur-3xl pointer-events-none" />
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <span className="badge-pill bg-crimson-600/20 text-crimson-400 border border-crimson-600/30">
-              🔴 LIVE
-            </span>
-            <span className="badge-pill bg-gold-500/10 text-gold-400 border border-gold-500/20">
-              AI POWERED
-            </span>
-          </div>
-          <h1 className="font-display text-6xl tracking-widest text-gradient-red mb-2">
-            MANGA MACHINE
-          </h1>
-          <p className="text-ink-200 text-lg max-w-xl">
-            AI-powered creative studio for manga, manhwa & webtoon production. 
-            From reference analysis to 1000+ chapter generation pipelines.
-          </p>
-          <div className="flex gap-3 mt-6">
-            <button
-              onClick={() => setActive("engine")}
-              className="px-6 py-3 rounded-xl bg-crimson-600 hover:bg-crimson-500 text-white font-semibold text-sm transition-all hover:shadow-lg hover:shadow-crimson-600/30 flex items-center gap-2"
-            >
-              <Flame size={16} /> Launch Story Engine
-            </button>
-            <button
-              onClick={() => setActive("library")}
-              className="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-semibold text-sm transition-all border border-white/10 flex items-center gap-2"
-            >
-              <BookOpen size={16} /> View Library
-            </button>
-          </div>
-        </motion.div>
+    <div className="p-6 md:p-8 min-h-screen">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-1">
+          <Flame className="text-crimson-400" size={22} />
+          <h1 className="font-display text-3xl md:text-4xl tracking-widest text-gradient-red">MANGA MACHINE</h1>
+        </div>
+        <p className="text-ink-300 text-sm">Your AI-powered manga studio. Build the next 1000-chapter epic.</p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, i) => {
-          const Icon = stat.icon;
-          return (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 + 0.2 }}
-              className="card-hover rounded-xl bg-ink-700 border border-white/5 p-5"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="p-2 rounded-lg" style={{ backgroundColor: `${stat.color}15` }}>
-                  <Icon size={18} style={{ color: stat.color }} />
-                </div>
-                <TrendingUp size={14} className="text-ink-300 mt-1" />
-              </div>
-              <div className="font-display text-4xl tracking-wider mb-1" style={{ color: stat.color }}>
-                {stat.value}
-              </div>
-              <div className="text-sm text-white font-medium">{stat.label}</div>
-              <div className="text-xs text-ink-300 mt-1">{stat.change}</div>
-            </motion.div>
-          );
-        })}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <StatCard label="Reference Series" value={loading ? "—" : stats.libraryCount} icon={BookOpen} color="#ffd700"
+          onClick={() => setActive("library")} />
+        <StatCard label="Story Bibles" value={loading ? "—" : stats.biblesCount} icon={Sparkles} color="#ff4d6d"
+          onClick={() => setActive("series")} />
+        <StatCard label="Chapter Scripts" value={loading ? "—" : stats.chaptersCount} icon={FileText} color="#00d4ff"
+          onClick={() => setActive("vault")} />
+        <StatCard label="In Production" value={loading ? "—" : stats.completeCount} icon={CheckCircle} color="#10b981"
+          onClick={() => setActive("series")} />
       </div>
 
-      {/* Quick Actions + Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.4 }}
-          className="rounded-xl bg-ink-700 border border-white/5 p-6"
-        >
-          <h2 className="font-display text-xl tracking-widest text-white mb-4">QUICK ACTIONS</h2>
-          <div className="space-y-3">
-            {quickActions.map((action, i) => (
-              <button
-                key={i}
-                className="w-full flex items-center gap-4 p-3 rounded-lg bg-white/3 hover:bg-white/8 border border-white/5 hover:border-white/10 transition-all group"
-              >
-                <span className="text-2xl">{action.icon}</span>
-                <div className="text-left flex-1">
-                  <div className="text-sm font-semibold text-white">{action.label}</div>
-                  <div className="text-xs text-ink-300">{action.desc}</div>
-                </div>
-                <ChevronRight size={16} className="text-ink-400 group-hover:text-white transition-colors" style={{ color: action.color }} />
-              </button>
+        <div className="lg:col-span-2">
+          <h2 className="font-display text-lg tracking-widest text-white mb-4 flex items-center gap-2">
+            <Zap size={16} className="text-crimson-400" /> QUICK ACTIONS
+          </h2>
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
+            {quickActions.map(a => (
+              <QuickAction key={a.page} icon={a.icon} label={a.label} color={a.color}
+                onClick={() => setActive(a.page)} />
             ))}
           </div>
-        </motion.div>
 
-        {/* Activity */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.5 }}
-          className="rounded-xl bg-ink-700 border border-white/5 p-6"
-        >
-          <h2 className="font-display text-xl tracking-widest text-white mb-4">RECENT ACTIVITY</h2>
-          <div className="space-y-4">
-            {recentActivity.map((item, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: item.color }} />
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-white">{item.action}</div>
-                  <div className="text-xs text-ink-300">{item.detail}</div>
+          {/* Featured CTA */}
+          <motion.div
+            whileHover={{ scale: 1.01 }}
+            onClick={() => setActive("engine")}
+            className="relative overflow-hidden rounded-2xl cursor-pointer border border-crimson-500/20 p-6"
+            style={{ background: "linear-gradient(135deg, rgba(255,77,109,0.12), rgba(192,57,43,0.06))" }}>
+            <div className="absolute inset-0 speed-line-bg opacity-30" />
+            <div className="relative z-10 flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles size={16} className="text-crimson-400" />
+                  <span className="text-crimson-400 text-xs font-semibold uppercase tracking-widest">Story Engine</span>
                 </div>
-                <div className="flex items-center gap-1 text-xs text-ink-400">
-                  <Clock size={10} />
-                  {item.time}
-                </div>
+                <h3 className="font-display text-2xl tracking-wider text-white mb-1">Generate New Series Bible</h3>
+                <p className="text-ink-300 text-sm">Pick your genre, tone & power system. Get a full series bible in seconds.</p>
               </div>
-            ))}
-          </div>
-
-          {/* Pipeline visual */}
-          <div className="mt-6 pt-4 border-t border-white/5">
-            <div className="text-xs text-ink-300 mb-3 font-semibold uppercase tracking-wider">Pipeline Status</div>
-            <div className="flex items-center gap-2">
-              {["Gmail Intake", "Research AI", "Library", "Story Engine", "Output"].map((step, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <div className="flex flex-col items-center">
-                    <div className={`w-2 h-2 rounded-full ${i < 3 ? "bg-green-500" : "bg-ink-500"}`} />
-                    <span className="text-[9px] text-ink-400 mt-1 whitespace-nowrap">{step}</span>
-                  </div>
-                  {i < 4 && <div className={`h-px w-4 ${i < 2 ? "bg-green-500/50" : "bg-ink-600"} mb-3`} />}
-                </div>
-              ))}
+              <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: "rgba(255,77,109,0.2)", border: "1px solid rgba(255,77,109,0.4)" }}>
+                <ChevronRight size={20} className="text-crimson-400" />
+              </div>
             </div>
+          </motion.div>
+        </div>
+
+        {/* Recent Activity */}
+        <div>
+          <h2 className="font-display text-lg tracking-widest text-white mb-4 flex items-center gap-2">
+            <Clock size={16} className="text-ink-300" /> RECENT ACTIVITY
+          </h2>
+          <div className="bg-ink-800/60 border border-white/5 rounded-2xl p-4">
+            {loading ? (
+              <div className="flex items-center justify-center h-32">
+                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
+                  <RefreshCw size={16} className="text-ink-500" />
+                </motion.div>
+              </div>
+            ) : recent.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-ink-500 text-sm">No activity yet.</p>
+                <button onClick={() => setActive("engine")}
+                  className="mt-3 text-xs text-crimson-400 hover:text-crimson-300 transition-colors">
+                  Generate your first bible →
+                </button>
+              </div>
+            ) : (
+              <div>
+                {recent.map(item => <ActivityItem key={item.id} item={item} />)}
+              </div>
+            )}
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );
