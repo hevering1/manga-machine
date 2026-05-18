@@ -1,25 +1,18 @@
 "use client";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Zap, ChevronRight, RotateCw, Copy, Check, BookOpen, Star, Globe, Swords, Users, AlertTriangle, TrendingUp, ChevronDown, ChevronUp } from "lucide-react";
+import { Sparkles, Zap, ChevronRight, RotateCw, Copy, Check, BookOpen, Globe, Sword, User, Users, Flame, Star, ChevronDown } from "lucide-react";
 
-const genres = ["Shonen Action", "Dark Fantasy", "Isekai", "Psychological", "Sci-Fi", "Romance Action", "Historical", "Horror Survival", "Cultivation", "Nation Building"];
-const protagonists = ["Weakest to Strongest", "Genius Tactician", "Anti-Hero", "Underdog Hidden Genius", "Revenge Arc", "Overpowered Reincarnated", "Ancient Master Reborn", "Strategic Expert"];
-const settings = ["Modern World + Gates", "Medieval Fantasy", "Ancient Cultivation World", "Dystopian Future", "Tower Realm", "Multi-Nation Empire", "Post-Apocalypse", "Divine Hierarchy World"];
-const tones = ["Dark & Gritty", "Epic & Grand", "Psychological Thriller", "Cold & Methodical", "Emotional Drama", "Pure Action", "Strategic Mind Game"];
-const powerTypes = ["Skill Evolution System", "Cultivation Tiers", "Absorption / Mimicry", "Nation Building + Combat", "Divine Zodiac System", "Tower Floor Mechanics", "Forbidden Ancient Arts", "Clone / Replication"];
+const genres = ["Shonen Action", "Dark Fantasy", "Isekai", "Psychological", "Sci-Fi", "Romance Action", "Historical", "Horror Survival", "Cultivation", "Political"];
+const protagonists = ["Weakest to Strongest", "Genius Tactician", "Anti-Hero", "Hidden Genius / Underdog", "Revenge Arc", "Overpowered Hidden", "Reluctant Hero", "Fallen King Reborn", "Nation Builder"];
+const settings = ["Modern World + Dungeons", "Medieval Fantasy", "Dystopian Future", "Ancient Cultivation World", "Tower / Trial System", "Urban Supernatural", "Multi-Nation Epic", "Post-Apocalyptic"];
+const tones = ["Dark & Gritty", "Epic & Grand", "Psychological Thriller", "Pure Revenge", "Optimistic Power Fantasy", "Emotional Drama", "Cold & Methodical"];
+const powerTypes = ["Skill Evolution System", "Cultivation Tiers", "Tower Floor System", "Absorption / Predator Style", "Divine / Zodiac System", "Martial Arts Paths", "Forbidden Ancient Arts", "Clone / Replication"];
 
-const APP_ID = "69eb83a3def5ae18fa5c7c1a";
-const BASE_URL = `https://app.base44.com/api/apps/${APP_ID}`;
-
-interface Reference {
+interface ReferenceEntry {
   id: string;
   title: string;
-  genre: string[];
-  power_system: string;
-  protagonist_archetype: string;
-  tone: string;
-  tags: string[];
+  type: string;
 }
 
 interface StoryResult {
@@ -51,10 +44,12 @@ function Chip({ label, active, color, onClick }: { label: string; active: boolea
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-        active ? "text-white border-transparent" : "bg-ink-700 text-ink-300 border-white/10 hover:border-white/30 hover:text-white"
-      }`}
-      style={active ? { backgroundColor: color, borderColor: color } : {}}
+      className="px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200"
+      style={{
+        borderColor: active ? color : "rgba(255,255,255,0.1)",
+        backgroundColor: active ? `${color}22` : "transparent",
+        color: active ? color : "#888",
+      }}
     >
       {label}
     </button>
@@ -64,24 +59,26 @@ function Chip({ label, active, color, onClick }: { label: string; active: boolea
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="mb-5">
-      <p className="text-xs text-ink-300 uppercase tracking-wider font-semibold mb-3">{label}</p>
+      <p className="text-xs text-ink-300 uppercase tracking-widest font-semibold mb-2">{label}</p>
       <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   );
 }
 
-function CollapsibleSection({ title, icon: Icon, children, defaultOpen = false }: { title: string; icon: any; children: React.ReactNode; defaultOpen?: boolean }) {
-  const [open, setOpen] = useState(defaultOpen);
+function ResultSection({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(true);
   return (
-    <div className="border border-white/5 rounded-xl overflow-hidden mb-3">
-      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3 bg-ink-800 hover:bg-ink-700 transition-colors">
+    <div className="border border-white/10 rounded-xl overflow-hidden mb-3">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-ink-800 hover:bg-ink-700 transition-colors"
+      >
         <div className="flex items-center gap-2 text-sm font-semibold text-white">
-          <Icon size={14} className="text-crimson-400" />
-          {title}
+          {icon} {title}
         </div>
-        {open ? <ChevronUp size={14} className="text-ink-400" /> : <ChevronDown size={14} className="text-ink-400" />}
+        <ChevronDown size={14} className={`text-ink-400 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
-      {open && <div className="p-4 bg-ink-900 text-sm text-ink-200 leading-relaxed">{children}</div>}
+      {open && <div className="px-4 py-3 bg-ink-900 text-sm text-ink-100 leading-relaxed">{children}</div>}
     </div>
   );
 }
@@ -90,66 +87,60 @@ export default function StoryEngine() {
   const [step, setStep] = useState(0);
   const [config, setConfig] = useState({
     genre: "", protagonist: "", setting: "", tone: "", power: "",
-    themes: "", references: [] as string[]
+    referenceIds: [] as string[], themes: ""
   });
+  const [references, setReferences] = useState<ReferenceEntry[]>([]);
   const [generating, setGenerating] = useState(false);
   const [story, setStory] = useState<StoryResult | null>(null);
-  const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
-  const [refLibrary, setRefLibrary] = useState<Reference[]>([]);
-  const [loadingRefs, setLoadingRefs] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
-    fetch(`${BASE_URL}/entities/ReferenceLibrary/`)
+    fetch("/api/references")
       .then(r => r.json())
-      .then(data => {
-        setRefLibrary(Array.isArray(data) ? data : []);
-        setLoadingRefs(false);
-      })
-      .catch(() => setLoadingRefs(false));
+      .then(data => setReferences(data.references || []))
+      .catch(() => {});
   }, []);
 
   const toggle = (key: keyof typeof config, val: string) => {
-    if (key === "references") {
-      const refs = config.references;
+    if (key === "referenceIds") {
+      const refs = config.referenceIds;
       setConfig(c => ({
-        ...c, references: refs.includes(val) ? refs.filter(r => r !== val) : [...refs, val]
+        ...c, referenceIds: refs.includes(val) ? refs.filter(r => r !== val) : [...refs, val]
       }));
     } else {
-      setConfig(c => ({ ...c, [key]: c[key] === val ? "" : val }));
+      setConfig(c => ({ ...c, [key]: (c[key] as string) === val ? "" : val }));
     }
   };
 
   const handleGenerate = async () => {
     setGenerating(true);
-    setError("");
     setStory(null);
-
-    const selectedRefs = refLibrary.filter(r => config.references.includes(r.title)).map(r => r.id);
-
+    setError("");
     try {
-      const res = await fetch(`${BASE_URL}/functions/storyEngine`, {
+      const res = await fetch("/api/story-engine", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tone: config.tone || "Dark Epic",
           genre: config.genre || "Action Fantasy",
           themes: config.themes || "Revenge, Power, Identity",
-          powerSystemStyle: config.power || "Skill evolution with unique mechanics",
+          powerSystemStyle: config.power || "Unique skill-based with evolution",
           protagonistType: config.protagonist || "Hidden Genius / Underdog",
           worldScale: config.setting || "Epic multi-nation",
-          referenceIds: selectedRefs.length > 0 ? selectedRefs : undefined,
+          referenceIds: config.referenceIds,
         }),
       });
-
       const data = await res.json();
       if (data.success && data.story) {
         setStory(data.story);
+        setStep(4);
       } else {
         setError(data.error || "Generation failed. Try again.");
       }
-    } catch (e: any) {
-      setError("Network error. Please try again.");
+    } catch (e) {
+      setError("Network error. Check connection.");
     } finally {
       setGenerating(false);
     }
@@ -157,16 +148,15 @@ export default function StoryEngine() {
 
   const handleCopy = () => {
     if (!story) return;
-    const text = JSON.stringify(story, null, 2);
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(JSON.stringify(story, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const steps = ["Genre & Tone", "Characters", "World & Power", "References", "Generate"];
+  const steps = ["Genre & Tone", "Characters", "World & Power", "References", "Result"];
 
   return (
-    <div className="p-8 h-full overflow-y-auto">
+    <div className="p-6 h-full overflow-y-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display text-4xl tracking-widest text-gradient-red">STORY ENGINE</h1>
@@ -177,251 +167,237 @@ export default function StoryEngine() {
         </span>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Config Panel */}
-        <div className="space-y-5">
-          <div className="flex flex-wrap items-center gap-2">
-            {steps.map((s, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <button
-                  onClick={() => setStep(i)}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-all ${
-                    step === i ? "bg-crimson-600 text-white" : "bg-ink-600 text-ink-300 hover:text-white"
-                  }`}
-                >
-                  {i + 1}. {s}
-                </button>
-                {i < steps.length - 1 && <ChevronRight size={12} className="text-ink-500" />}
-              </div>
-            ))}
+      <div className="flex items-center gap-1 mb-6 flex-wrap">
+        {steps.map((s, i) => (
+          <div key={i} className="flex items-center gap-1">
+            <button
+              onClick={() => i < 4 && setStep(i)}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-all ${
+                step === i ? "bg-crimson-600 text-white" : i < step ? "bg-ink-600 text-crimson-400 border border-crimson-600/30" : "bg-ink-700 text-ink-400"
+              }`}
+            >
+              {i + 1}. {s}
+            </button>
+            {i < steps.length - 1 && <ChevronRight size={10} className="text-ink-600" />}
           </div>
+        ))}
+      </div>
 
-          <AnimatePresence mode="wait">
-            {step === 0 && (
-              <motion.div key="step0" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <Section label="Genre">
-                  {genres.map(g => (
-                    <Chip key={g} label={g} active={config.genre === g} color="#ff4d6d" onClick={() => toggle("genre", g)} />
-                  ))}
-                </Section>
-                <Section label="Tone">
-                  {tones.map(t => (
-                    <Chip key={t} label={t} active={config.tone === t} color="#ffd700" onClick={() => toggle("tone", t)} />
-                  ))}
-                </Section>
-                <div>
-                  <p className="text-xs text-ink-300 uppercase tracking-wider font-semibold mb-2">Core Themes</p>
-                  <input
-                    value={config.themes}
-                    onChange={e => setConfig(c => ({ ...c, themes: e.target.value }))}
-                    placeholder="e.g. Betrayal, Found Family, Identity, Revenge..."
-                    className="w-full bg-ink-600 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-ink-400 focus:outline-none focus:border-crimson-500"
-                  />
-                </div>
-              </motion.div>
-            )}
-            {step === 1 && (
-              <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <Section label="Protagonist Archetype">
-                  {protagonists.map(p => (
-                    <Chip key={p} label={p} active={config.protagonist === p} color="#a855f7" onClick={() => toggle("protagonist", p)} />
-                  ))}
-                </Section>
-              </motion.div>
-            )}
-            {step === 2 && (
-              <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <Section label="World Setting">
-                  {settings.map(s => (
-                    <Chip key={s} label={s} active={config.setting === s} color="#10b981" onClick={() => toggle("setting", s)} />
-                  ))}
-                </Section>
-                <Section label="Power System Type">
-                  {powerTypes.map(p => (
-                    <Chip key={p} label={p} active={config.power === p} color="#f97316" onClick={() => toggle("power", p)} />
-                  ))}
-                </Section>
-              </motion.div>
-            )}
-            {step === 3 && (
-              <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <Section label={loadingRefs ? "Loading reference library..." : `Pick reference series to inspire this story (${refLibrary.length} available)`}>
-                  {loadingRefs ? (
-                    <div className="text-ink-400 text-xs">Loading...</div>
-                  ) : refLibrary.length === 0 ? (
-                    <div className="text-ink-400 text-xs">No series in library yet.</div>
-                  ) : (
-                    refLibrary.map(r => (
-                      <Chip key={r.id} label={r.title} active={config.references.includes(r.title)} color="#00d4ff" onClick={() => toggle("references", r.title)} />
-                    ))
-                  )}
-                </Section>
-                <p className="text-xs text-ink-400 mt-1">Leave all unselected to draw from the entire library automatically.</p>
-              </motion.div>
-            )}
-            {step === 4 && (
-              <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <div className="bg-ink-800 rounded-xl p-4 border border-white/5 space-y-2 text-sm mb-4">
-                  <p className="text-ink-300 font-semibold mb-3 text-xs uppercase tracking-wider">Your Configuration</p>
-                  {[
-                    ["Genre", config.genre || "Auto"],
-                    ["Tone", config.tone || "Auto"],
-                    ["Themes", config.themes || "Auto"],
-                    ["Protagonist", config.protagonist || "Auto"],
-                    ["Setting", config.setting || "Auto"],
-                    ["Power System", config.power || "Auto"],
-                    ["References", config.references.length > 0 ? config.references.join(", ") : "Full library"],
-                  ].map(([k, v]) => (
-                    <div key={k} className="flex justify-between gap-4">
-                      <span className="text-ink-400 text-xs uppercase tracking-wide">{k}</span>
-                      <span className="text-white text-xs text-right">{v}</span>
-                    </div>
+      <AnimatePresence mode="wait">
+        {step === 0 && (
+          <motion.div key="s0" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+            <div className="rounded-xl bg-ink-800 border border-white/5 p-5">
+              <Section label="Genre">
+                {genres.map(g => <Chip key={g} label={g} active={config.genre === g} color="#ff4d6d" onClick={() => toggle("genre", g)} />)}
+              </Section>
+              <Section label="Tone">
+                {tones.map(t => <Chip key={t} label={t} active={config.tone === t} color="#ffd700" onClick={() => toggle("tone", t)} />)}
+              </Section>
+              <div className="mt-2">
+                <p className="text-xs text-ink-300 uppercase tracking-widest font-semibold mb-2">Core Themes</p>
+                <input
+                  value={config.themes}
+                  onChange={e => setConfig(c => ({ ...c, themes: e.target.value }))}
+                  placeholder="e.g. Revenge, Identity, Betrayal, Nation-Building..."
+                  className="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-ink-400 focus:outline-none focus:border-crimson-500"
+                />
+              </div>
+            </div>
+            <button onClick={() => setStep(1)} className="mt-4 w-full py-3 rounded-xl bg-crimson-600 hover:bg-crimson-500 text-white font-semibold text-sm flex items-center justify-center gap-2">
+              Next: Characters <ChevronRight size={16} />
+            </button>
+          </motion.div>
+        )}
+
+        {step === 1 && (
+          <motion.div key="s1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+            <div className="rounded-xl bg-ink-800 border border-white/5 p-5">
+              <Section label="Protagonist Archetype">
+                {protagonists.map(p => <Chip key={p} label={p} active={config.protagonist === p} color="#a855f7" onClick={() => toggle("protagonist", p)} />)}
+              </Section>
+            </div>
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => setStep(0)} className="px-5 py-3 rounded-xl bg-ink-700 text-white text-sm hover:bg-ink-600">Back</button>
+              <button onClick={() => setStep(2)} className="flex-1 py-3 rounded-xl bg-crimson-600 hover:bg-crimson-500 text-white font-semibold text-sm flex items-center justify-center gap-2">
+                Next: World & Power <ChevronRight size={16} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {step === 2 && (
+          <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+            <div className="rounded-xl bg-ink-800 border border-white/5 p-5">
+              <Section label="World Setting">
+                {settings.map(s => <Chip key={s} label={s} active={config.setting === s} color="#10b981" onClick={() => toggle("setting", s)} />)}
+              </Section>
+              <Section label="Power System Type">
+                {powerTypes.map(p => <Chip key={p} label={p} active={config.power === p} color="#f97316" onClick={() => toggle("power", p)} />)}
+              </Section>
+            </div>
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => setStep(1)} className="px-5 py-3 rounded-xl bg-ink-700 text-white text-sm hover:bg-ink-600">Back</button>
+              <button onClick={() => setStep(3)} className="flex-1 py-3 rounded-xl bg-crimson-600 hover:bg-crimson-500 text-white font-semibold text-sm flex items-center justify-center gap-2">
+                Next: References <ChevronRight size={16} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {step === 3 && (
+          <motion.div key="s3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+            <div className="rounded-xl bg-ink-800 border border-white/5 p-5">
+              <p className="text-xs text-ink-300 uppercase tracking-widest font-semibold mb-1">Select Reference Series (optional)</p>
+              <p className="text-ink-400 text-xs mb-4">The AI will synthesize patterns from selected references to inspire your new series.</p>
+              {references.length === 0 ? (
+                <p className="text-ink-500 text-sm">Loading library...</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {references.map(r => (
+                    <Chip key={r.id} label={r.title} active={config.referenceIds.includes(r.id)} color="#00d4ff" onClick={() => toggle("referenceIds", r.id)} />
                   ))}
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <div className="flex gap-3">
-            {step > 0 && (
-              <button onClick={() => setStep(s => s - 1)} className="px-4 py-3 rounded-xl bg-ink-600 text-white text-sm hover:bg-ink-500 transition-colors">
-                Back
-              </button>
-            )}
-            {step < 4 ? (
-              <button onClick={() => setStep(s => s + 1)} className="flex-1 py-3 rounded-xl bg-crimson-600 hover:bg-crimson-500 text-white font-semibold text-sm transition-all flex items-center justify-center gap-2">
-                Next <ChevronRight size={16} />
-              </button>
-            ) : (
+              )}
+              {config.referenceIds.length > 0 && (
+                <p className="text-xs text-crimson-400 mt-3">{config.referenceIds.length} reference{config.referenceIds.length > 1 ? "s" : ""} selected</p>
+              )}
+            </div>
+            {error && <p className="text-red-400 text-sm mt-3 text-center">{error}</p>}
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => setStep(2)} className="px-5 py-3 rounded-xl bg-ink-700 text-white text-sm hover:bg-ink-600">Back</button>
               <button
                 onClick={handleGenerate}
                 disabled={generating}
-                className="flex-1 py-3 rounded-xl bg-crimson-600 hover:bg-crimson-500 disabled:opacity-60 text-white font-semibold text-sm transition-all flex items-center justify-center gap-2"
+                className="flex-1 py-3 rounded-xl bg-crimson-600 hover:bg-crimson-500 disabled:opacity-60 text-white font-bold text-sm flex items-center justify-center gap-2"
               >
                 {generating ? <RotateCw size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                {generating ? "Synthesizing story bible..." : "Generate Story Bible"}
+                {generating ? "Generating Story Bible..." : "Generate Story Bible"}
               </button>
-            )}
-          </div>
-
-          {error && (
-            <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded-xl p-3">
-              <AlertTriangle size={14} />
-              {error}
             </div>
-          )}
-        </div>
+          </motion.div>
+        )}
 
-        {/* Output Panel */}
-        <div className="rounded-xl bg-ink-900 border border-white/5 overflow-hidden flex flex-col min-h-[500px]">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-ink-800">
-            <div className="flex items-center gap-2 text-xs text-ink-300 font-semibold uppercase tracking-wider">
-              <BookOpen size={12} />
-              Story Bible Output
+        {step === 4 && story && (
+          <motion.div key="s4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="rounded-xl bg-gradient-to-br from-crimson-900/40 to-ink-900 border border-crimson-600/30 p-6 mb-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="font-display text-3xl tracking-widest text-white mb-1">{story.series_title}</h2>
+                  <p className="text-crimson-400 font-semibold text-sm italic mb-3">"{story.tagline}"</p>
+                  <p className="text-ink-200 text-sm leading-relaxed">{story.elevator_pitch}</p>
+                </div>
+                <button onClick={handleCopy} className="flex-shrink-0 p-2 rounded-lg bg-ink-700 hover:bg-ink-600 text-white">
+                  {copied ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-4">
+                {story.core_themes.map((t, i) => (
+                  <span key={i} className="text-xs px-2 py-1 rounded-full bg-crimson-600/20 text-crimson-300 border border-crimson-600/30">{t}</span>
+                ))}
+              </div>
             </div>
-            {story && (
-              <button onClick={handleCopy} className="flex items-center gap-1.5 text-xs text-ink-300 hover:text-white transition-colors">
-                {copied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
-                {copied ? "Copied!" : "Copy JSON"}
-              </button>
-            )}
-          </div>
 
-          <div className="flex-1 overflow-y-auto p-4">
-            {generating && (
-              <div className="flex flex-col items-center justify-center h-64 gap-4 text-ink-400">
-                <div className="relative">
-                  <div className="w-16 h-16 border-2 border-crimson-600/30 rounded-full animate-spin border-t-crimson-600" />
-                  <Sparkles size={20} className="absolute inset-0 m-auto text-crimson-400" />
-                </div>
-                <p className="text-sm text-center">Synthesizing your story bible from {refLibrary.length} reference series...<br/><span className="text-xs text-ink-500">~20 seconds</span></p>
-              </div>
-            )}
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {["overview", "power", "characters", "arcs", "chapters", "hooks"].map(tab => (
+                <button key={tab} onClick={() => setActiveTab(tab)}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-full capitalize transition-all ${activeTab === tab ? "bg-crimson-600 text-white" : "bg-ink-700 text-ink-300 hover:text-white"}`}>
+                  {tab}
+                </button>
+              ))}
+            </div>
 
-            {!generating && !story && (
-              <div className="flex flex-col items-center justify-center h-64 gap-3 text-ink-500">
-                <Zap size={32} className="text-ink-600" />
-                <p className="text-sm text-center">Configure your settings and hit Generate.<br/>Your complete story bible will appear here.</p>
-              </div>
-            )}
-
-            {story && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-                <div className="text-center pb-4 border-b border-white/5">
-                  <h2 className="font-display text-2xl tracking-widest text-gradient-red mb-1">{story.series_title}</h2>
-                  <p className="text-yellow-400 text-sm font-semibold italic">"{story.tagline}"</p>
-                  <p className="text-ink-300 text-xs mt-2 leading-relaxed">{story.elevator_pitch}</p>
-                </div>
-
-                <CollapsibleSection title={`World: ${story.world_name}`} icon={Globe} defaultOpen={true}>
-                  {story.world_building}
-                </CollapsibleSection>
-
-                <CollapsibleSection title={`Power System: ${story.power_system_name}`} icon={Zap} defaultOpen={true}>
-                  {story.power_system}
-                </CollapsibleSection>
-
-                <CollapsibleSection title={`Protagonist: ${story.protagonist_name}`} icon={Star} defaultOpen={true}>
-                  <p><span className="text-crimson-400 font-semibold">Archetype:</span> {story.protagonist_archetype}</p>
-                  <p className="mt-2">{story.protagonist_background}</p>
-                </CollapsibleSection>
-
-                <CollapsibleSection title={`Antagonist: ${story.antagonist_name}`} icon={Swords}>
-                  <p><span className="text-crimson-400 font-semibold">Archetype:</span> {story.antagonist_archetype}</p>
-                  <p className="mt-2"><span className="text-crimson-400 font-semibold">Motivation:</span> {story.antagonist_motivation}</p>
-                </CollapsibleSection>
-
-                <CollapsibleSection title="Supporting Cast" icon={Users}>
-                  {story.supporting_cast?.map((c, i) => (
-                    <div key={i} className="mb-3 last:mb-0">
-                      <p className="text-white font-semibold">{c.name} <span className="text-ink-400 font-normal text-xs">— {c.role}</span></p>
-                      <p className="text-ink-300 text-xs mt-1">{c.description}</p>
-                    </div>
-                  ))}
-                </CollapsibleSection>
-
-                <CollapsibleSection title="Virality Hooks 🔥" icon={TrendingUp} defaultOpen={true}>
-                  <ul className="space-y-2">
-                    {story.virality_hooks?.map((h, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span className="text-crimson-400 font-bold text-xs mt-0.5">{i + 1}.</span>
-                        <span>{h}</span>
-                      </li>
+            {activeTab === "overview" && (
+              <div className="space-y-3">
+                <ResultSection icon={<Globe size={14} className="text-emerald-400" />} title={`World: ${story.world_name}`}>
+                  <p>{story.world_building}</p>
+                </ResultSection>
+                <ResultSection icon={<Star size={14} className="text-yellow-400" />} title="What Makes It Original">
+                  <p>{story.what_makes_it_original}</p>
+                </ResultSection>
+                <ResultSection icon={<BookOpen size={14} className="text-blue-400" />} title="Comparable Series">
+                  <div className="flex flex-wrap gap-2">
+                    {story.comparable_series.map((s, i) => (
+                      <span key={i} className="text-xs px-2 py-1 rounded-full bg-blue-600/20 text-blue-300 border border-blue-600/30">{s}</span>
                     ))}
-                  </ul>
-                </CollapsibleSection>
-
-                <CollapsibleSection title="Story Arc Structure" icon={BookOpen}>
-                  {story.chapter_arc_structure?.map((arc, i) => (
-                    <div key={i} className="mb-3 last:mb-0 pb-3 last:pb-0 border-b last:border-0 border-white/5">
-                      <p className="text-white font-semibold">{arc.arc_name} <span className="text-ink-400 font-normal text-xs">Ch. {arc.chapters}</span></p>
-                      <p className="text-ink-300 text-xs mt-1">{arc.summary}</p>
-                    </div>
-                  ))}
-                </CollapsibleSection>
-
-                <CollapsibleSection title="First 10 Chapters" icon={BookOpen}>
-                  {story.first_10_chapters?.map((ch, i) => (
-                    <div key={i} className="mb-4 last:mb-0 pb-4 last:pb-0 border-b last:border-0 border-white/5">
-                      <p className="text-white font-semibold text-xs">Ch.{ch.chapter}: {ch.title}</p>
-                      <p className="text-ink-300 text-xs mt-1">{ch.summary}</p>
-                      <p className="text-yellow-400 text-xs mt-1 italic">↳ {ch.hook}</p>
-                    </div>
-                  ))}
-                </CollapsibleSection>
-
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {story.core_themes?.map((t, i) => (
-                    <span key={i} className="text-xs px-2 py-1 rounded-full bg-crimson-600/20 text-crimson-400 border border-crimson-600/20">{t}</span>
-                  ))}
-                </div>
-                <p className="text-ink-500 text-xs">Comparable: {story.comparable_series?.join(", ")}</p>
-                <p className="text-ink-500 text-xs italic">{story.what_makes_it_original}</p>
-              </motion.div>
+                  </div>
+                </ResultSection>
+              </div>
             )}
-          </div>
-        </div>
-      </div>
+            {activeTab === "power" && (
+              <ResultSection icon={<Zap size={14} className="text-yellow-400" />} title={`Power System: ${story.power_system_name}`}>
+                <p>{story.power_system}</p>
+              </ResultSection>
+            )}
+            {activeTab === "characters" && (
+              <div className="space-y-3">
+                <ResultSection icon={<User size={14} className="text-purple-400" />} title={`Protagonist: ${story.protagonist_name}`}>
+                  <p className="text-xs text-ink-400 mb-1 uppercase tracking-wider">{story.protagonist_archetype}</p>
+                  <p>{story.protagonist_background}</p>
+                </ResultSection>
+                <ResultSection icon={<Sword size={14} className="text-red-400" />} title={`Antagonist: ${story.antagonist_name}`}>
+                  <p className="text-xs text-ink-400 mb-1 uppercase tracking-wider">{story.antagonist_archetype}</p>
+                  <p>{story.antagonist_motivation}</p>
+                </ResultSection>
+                <ResultSection icon={<Users size={14} className="text-blue-400" />} title="Supporting Cast">
+                  <div className="space-y-3">
+                    {story.supporting_cast.map((c, i) => (
+                      <div key={i} className="border-l-2 border-crimson-600/40 pl-3">
+                        <p className="font-semibold text-white">{c.name} <span className="text-xs text-ink-400 font-normal">— {c.role}</span></p>
+                        <p className="text-ink-300 text-xs mt-0.5">{c.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </ResultSection>
+              </div>
+            )}
+            {activeTab === "arcs" && (
+              <div className="space-y-3">
+                {story.chapter_arc_structure.map((arc, i) => (
+                  <div key={i} className="rounded-xl bg-ink-800 border border-white/5 p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="font-semibold text-white text-sm">{arc.arc_name}</p>
+                      <span className="text-xs text-crimson-400 bg-crimson-600/10 px-2 py-0.5 rounded-full border border-crimson-600/20">Ch. {arc.chapters}</span>
+                    </div>
+                    <p className="text-ink-300 text-xs leading-relaxed">{arc.summary}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {activeTab === "chapters" && (
+              <div className="space-y-2">
+                {story.first_10_chapters.map((ch, i) => (
+                  <div key={i} className="rounded-xl bg-ink-800 border border-white/5 p-4">
+                    <p className="font-semibold text-white text-sm mb-1">Ch.{ch.chapter}: {ch.title}</p>
+                    <p className="text-ink-300 text-xs leading-relaxed mb-2">{ch.summary}</p>
+                    <p className="text-xs text-crimson-400 italic">🔥 {ch.hook}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {activeTab === "hooks" && (
+              <div className="space-y-2">
+                {story.virality_hooks.map((hook, i) => (
+                  <div key={i} className="rounded-xl bg-ink-800 border border-crimson-600/20 p-4 flex items-start gap-3">
+                    <span className="text-crimson-500 font-bold text-sm flex-shrink-0">#{i + 1}</span>
+                    <p className="text-ink-100 text-sm">{hook}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => { setStory(null); setStep(0); setConfig({ genre: "", protagonist: "", setting: "", tone: "", power: "", referenceIds: [], themes: "" }); }}
+                className="px-5 py-3 rounded-xl bg-ink-700 text-white text-sm hover:bg-ink-600">
+                New Generation
+              </button>
+              <button onClick={handleCopy} className="flex-1 py-3 rounded-xl bg-ink-700 hover:bg-ink-600 text-white font-semibold text-sm flex items-center justify-center gap-2">
+                {copied ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
+                {copied ? "Copied!" : "Copy Full Bible (JSON)"}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
