@@ -11,6 +11,10 @@ import PowerSystems from "@/components/PowerSystems";
 import StoryAuditor from "@/components/StoryAuditor";
 import ChapterVault from "@/components/ChapterVault";
 import ActiveSeries from "@/components/ActiveSeries";
+import StoryboardGenerator from "@/components/StoryboardGenerator";
+import DialogueGenerator from "@/components/DialogueGenerator";
+import CharacterConsistency from "@/components/CharacterConsistency";
+import Gallery from "@/components/Gallery";
 import { Plus, Sparkles, BookOpen, Users, Globe, Zap, X } from "lucide-react";
 
 // ── Toast context ───────────────────────────────────────────────
@@ -54,7 +58,7 @@ function FloatingButton({ onNavigate }: { onNavigate: (page: string) => void }) 
   const actions = [
     { icon: Sparkles, label: "New Bible",  color: "#ff4d6d", page: "engine" },
     { icon: BookOpen, label: "Add Series", color: "#ffd700", page: "library" },
-    { icon: Users,    label: "Characters", color: "#a855f7", page: "characters" },
+    { icon: Users,    label: "Characters", color: "#a855f7", page: "consistency" },
     { icon: Globe,    label: "World",      color: "#00d4ff", page: "world" },
     { icon: Zap,      label: "Power Sys",  color: "#ffd700", page: "power" },
   ];
@@ -106,15 +110,19 @@ function FloatingButton({ onNavigate }: { onNavigate: (page: string) => void }) 
 
 // ── Page map ────────────────────────────────────────────────────
 const pageMap: Record<string, React.ComponentType<any>> = {
-  dashboard:  Dashboard,
-  library:    ReferenceLibrary,
-  series:     ActiveSeries,
-  characters: Characters,
-  world:      WorldBuilder,
-  power:      PowerSystems,
-  engine:     StoryEngine,
-  auditor:    StoryAuditor,
-  vault:      ChapterVault,
+  dashboard:    Dashboard,
+  library:      ReferenceLibrary,
+  series:       ActiveSeries,
+  characters:   Characters,
+  consistency:  CharacterConsistency,
+  world:        WorldBuilder,
+  power:        PowerSystems,
+  engine:       StoryEngine,
+  auditor:      StoryAuditor,
+  vault:        ChapterVault,
+  storyboard:   StoryboardGenerator,
+  dialogue:     DialogueGenerator,
+  gallery:      Gallery,
 };
 
 // ── App ─────────────────────────────────────────────────────────
@@ -132,7 +140,7 @@ export default function Home() {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
-  // Keyboard shortcuts: G = Story Engine, Escape = Dashboard
+  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
