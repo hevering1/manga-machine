@@ -4,31 +4,47 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen, Zap, Users, Globe, Layers, BarChart2,
   ChevronRight, Terminal, Menu, X, Sparkles, Database,
-  Home, PanelLeftClose, PanelLeft
+  Home, PanelLeftClose, PanelLeft, Film, MessageSquare,
+  Star, UserCheck
 } from "lucide-react";
 
 const nav = [
-  { id: "dashboard", label: "Dashboard",     icon: Home,     color: "#ff4d6d" },
-  { id: "library",   label: "Reference Lib", icon: BookOpen,  color: "#ffd700" },
-  { id: "series",    label: "Active Series", icon: Layers,    color: "#ff4d6d" },
-  { id: "characters",label: "Characters",    icon: Users,     color: "#a855f7" },
-  { id: "world",     label: "World Builder", icon: Globe,     color: "#00d4ff" },
-  { id: "power",     label: "Power Systems", icon: Zap,       color: "#ffd700" },
-  { id: "engine",    label: "Story Engine",  icon: Sparkles,  color: "#ff4d6d" },
-  { id: "auditor",   label: "Story Auditor", icon: BarChart2, color: "#a855f7" },
-  { id: "vault",     label: "Chapter Vault", icon: Database,  color: "#00d4ff" },
+  // Core
+  { id: "dashboard",    label: "Dashboard",       icon: Home,           color: "#ff4d6d",  group: "core" },
+  { id: "gallery",      label: "Gallery",          icon: Star,           color: "#ffd700",  group: "core" },
+  // Library & Series
+  { id: "library",      label: "Reference Lib",    icon: BookOpen,       color: "#ffd700",  group: "library" },
+  { id: "series",       label: "Active Series",    icon: Layers,         color: "#ff4d6d",  group: "library" },
+  // Creation
+  { id: "engine",       label: "Story Engine",     icon: Sparkles,       color: "#ff4d6d",  group: "create" },
+  { id: "storyboard",   label: "Storyboard",       icon: Film,           color: "#a855f7",  group: "create" },
+  { id: "dialogue",     label: "Dialogue",         icon: MessageSquare,  color: "#ffd700",  group: "create" },
+  { id: "vault",        label: "Chapter Vault",    icon: Database,       color: "#00d4ff",  group: "create" },
+  // Characters & World
+  { id: "consistency",  label: "Characters",       icon: UserCheck,      color: "#00d4ff",  group: "world" },
+  { id: "world",        label: "World Builder",    icon: Globe,          color: "#00d4ff",  group: "world" },
+  { id: "power",        label: "Power Systems",    icon: Zap,            color: "#ffd700",  group: "world" },
+  // Tools
+  { id: "auditor",      label: "Story Auditor",    icon: BarChart2,      color: "#a855f7",  group: "tools" },
+];
+
+const groups = [
+  { id: "core",    label: "Home" },
+  { id: "library", label: "Library" },
+  { id: "create",  label: "Create" },
+  { id: "world",   label: "World" },
+  { id: "tools",   label: "Tools" },
 ];
 
 const shortcuts: Record<string, string> = {
-  "1": "dashboard", "2": "library", "3": "series", "4": "characters",
-  "5": "world", "6": "power", "7": "engine", "8": "auditor", "9": "vault",
+  "1": "dashboard", "2": "library", "3": "series", "4": "engine",
+  "5": "storyboard", "6": "dialogue", "7": "vault", "8": "consistency", "9": "auditor",
 };
 
 export default function Sidebar({ active, setActive }: { active: string; setActive: (s: string) => void }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -57,11 +73,7 @@ export default function Sidebar({ active, setActive }: { active: string; setActi
             className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full"
             style={{ backgroundColor: item.color }} />
         )}
-        <item.icon
-          size={16}
-          className="flex-shrink-0"
-          style={{ color: isActive ? item.color : "#555" }}
-        />
+        <item.icon size={16} className="flex-shrink-0" style={{ color: isActive ? item.color : "#555" }} />
         <AnimatePresence>
           {!collapsed && (
             <motion.span
@@ -74,8 +86,6 @@ export default function Sidebar({ active, setActive }: { active: string; setActi
             </motion.span>
           )}
         </AnimatePresence>
-
-        {/* Tooltip when collapsed */}
         {collapsed && (
           <div className="absolute left-full ml-2 px-2 py-1 bg-ink-700 border border-white/10 rounded-lg text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">
             {item.label}
@@ -87,14 +97,12 @@ export default function Sidebar({ active, setActive }: { active: string; setActi
 
   return (
     <>
-      {/* Mobile toggle */}
       <button
         className="fixed top-4 left-4 z-50 md:hidden w-9 h-9 flex items-center justify-center rounded-xl bg-ink-800 border border-white/10 text-ink-300"
         onClick={() => setMobileOpen(o => !o)}>
         {mobileOpen ? <X size={16} /> : <Menu size={16} />}
       </button>
 
-      {/* Mobile overlay */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -103,9 +111,8 @@ export default function Sidebar({ active, setActive }: { active: string; setActi
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
       <motion.aside
-        animate={{ width: collapsed ? 56 : 200 }}
+        animate={{ width: collapsed ? 56 : 210 }}
         transition={{ duration: 0.2, ease: "easeInOut" }}
         className={`
           h-screen bg-ink-800/95 border-r border-white/5 flex flex-col overflow-hidden
@@ -131,17 +138,31 @@ export default function Sidebar({ active, setActive }: { active: string; setActi
           </AnimatePresence>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
-          {nav.map(item => <NavItem key={item.id} item={item} />)}
+        {/* Nav with groups */}
+        <nav className="flex-1 p-2 overflow-y-auto space-y-3">
+          {groups.map(group => {
+            const items = nav.filter(n => n.group === group.id);
+            return (
+              <div key={group.id}>
+                {!collapsed && (
+                  <p className="text-[9px] text-white/20 uppercase tracking-widest font-bold px-3 mb-1">
+                    {group.label}
+                  </p>
+                )}
+                <div className="space-y-0.5">
+                  {items.map(item => <NavItem key={item.id} item={item} />)}
+                </div>
+              </div>
+            );
+          })}
         </nav>
 
-        {/* Collapse toggle + shortcuts hint */}
+        {/* Bottom */}
         <div className="p-2 border-t border-white/5 space-y-1">
           {!collapsed && (
             <div className="px-3 py-1.5">
               <p className="text-[9px] text-ink-600 uppercase tracking-widest font-semibold">Shortcuts</p>
-              <p className="text-[9px] text-ink-600 mt-0.5">1-9 navigate · B toggle sidebar</p>
+              <p className="text-[9px] text-ink-600 mt-0.5">1-9 navigate · B toggle · G story engine</p>
             </div>
           )}
           <button
